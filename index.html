@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TecnoInnova S.A. - Portal de Datos</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+        body { background-color: #f1f5f9; padding: 30px; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 900px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h2 { color: #0f172a; margin-bottom: 20px; border-left: 5px solid #0ea5e9; padding-left: 10px; }
+        
+        /* Formularios */
+        .form-group { display: flex; flex-direction: column; margin-bottom: 15px; }
+        label { font-weight: 600; margin-bottom: 5px; color: #475569; }
+        input, select { padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
+        button { background-color: #0ea5e9; color: white; padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 5px; }
+        button:hover { background-color: #0284c7; }
+        
+        /* Grid de Secciones */
+        .auth-box { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .hidden { display: none; }
+        
+        /* Tablas */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th { background: #1e293b; color: white; padding: 10px; text-align: left; font-size: 14px; }
+        td { padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+        tr:nth-child(even) { background-color: #f8fafc; }
+        
+        .logout-btn { background-color: #ef4444; float: right; padding: 6px 12px; font-size: 12px; }
+        .logout-btn:hover { background-color: #dc2626; }
+    </style>
+</head>
+<body>
+
+    <div id="section-auth" class="container">
+        <h2>TecnoInnova S.A. - Autenticación de Operadores</h2>
+        <div class="auth-box">
+            <form id="form-login" onsubmit="loginUsuario(event)">
+                <h3>Iniciar Sesión</h3>
+                <div class="form-group">
+                    <label>Usuario</label>
+                    <input type="text" id="login-user" required>
+                </div>
+                <div class="form-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="login-pass" required>
+                </div>
+                <button type="submit">Ingresar al Sistema</button>
+            </form>
+
+            <form id="form-registro" onsubmit="registrarUsuario(event)">
+                <h3>Crear Nuevo Usuario (Desde la Web)</h3>
+                <div class="form-group">
+                    <label>Nuevo Usuario</label>
+                    <input type="text" id="reg-user" required>
+                </div>
+                <div class="form-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="reg-pass" required>
+                </div>
+                <button type="submit" style="background-color: #10b981;">Registrar Operador</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="section-dashboard" class="container hidden">
+        <button class="logout-btn" onclick="logout()">Cerrar Sesión</button>
+        <h2>Panel TecnoInnova S.A. - Conexión Supabase Activa</h2>
+        
+        <div class="form-group" style="margin-top: 20px;">
+            <label for="table-select">Seleccione la Tabla de la Base de Datos a Consultar:</label>
+            <select id="table-select" onchange="cargarDatosTabla(this.value)">
+                <option value="clientes">Clientes (15 Registros)</option>
+                <option value="pedidos">Pedidos / Solicitudes</option>
+                <option value="tecnicos">Técnicos Asignados</option>
+                <option value="inventario">Inventario de Equipos</option>
+            </select>
+        </div>
+
+        <h3 id="table-title" style="margin-top: 20px; color: #334155;">Tabla: Clientes</h3>
+        <div style="overflow-x: auto;">
+            <table id="data-table">
+                <thead id="table-head"></thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // TU URL REAL YA CONFIGURADA:
+        const SUPABASE_URL = "https://zrvzwnpnulvoucsjqwad.supabase.co";
+        
+        // AQUÍ BORRA EL TEXTO Y PEGA TU CLAVE ANON LARGA (Deja las comillas ""):
+        const SUPABASE_ANON_KEY = "sb_publishable_hjYabds2c26rawDBF-qFVA_rAz_EPla";
+
+        // Inicializar el cliente Supabase
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // FUNCION: Iniciar Sesión buscando en la tabla 'usuarios_sistema'
+        async function loginUsuario(e) {
+            e.preventDefault();
+            const user = document.getElementById('login-user').value;
+            const pass = document.getElementById('login-pass').value;
+
+            const { data, error } = await _supabase
+                .from('usuarios_sistema')
+                .select('*')
+                .eq('username', user)
+                .eq('password_text', pass);
+
+            if (error) {
+                alert("Error al conectar con la base de datos.");
+            } else if (data.length > 0) {
+                alert("¡Ingreso Exitoso! Bienvenido " + user);
+                document.getElementById('section-auth').classList.add('hidden');
+                document.getElementById('section-dashboard').classList.remove('hidden');
+                cargarDatosTabla('clientes');
+            } else {
+                alert("Usuario o contraseña incorrectos.");
+            }
+        }
+
+        // FUNCION: Crear usuario desde la web insertando en 'usuarios_sistema'
+        async function registrarUsuario(e) {
+            e.preventDefault();
+            const user = document.getElementById('reg-user').value;
+            const pass = document.getElementById('reg-pass').value;
+
+            const { data, error } = await _supabase
+                .from('usuarios_sistema')
+                .insert([{ username: user, password_text: pass, rol: 'Operador' }]);
+
+            if (error) {
+                alert("Error al registrar usuario: Puede que ya exista.");
+            } else {
+                alert("¡Usuario '" + user + "' creado exitosamente en Supabase! Ya puedes iniciar sesión.");
+                document.getElementById('form-registro').reset();
+            }
+        }
+
+        // FUNCION: Traer los datos dinámicos de Supabase y pintarlos en el HTML
+        async function cargarDatosTabla(tableName) {
+            document.getElementById('table-title').innerText = "Tabla: " + tableName.toUpperCase();
+            
+            const { data, error } = await _supabase.from(tableName).select('*').order(getPrimaryKey(tableName));
+
+            if (error) {
+                alert("Error cargando datos.");
+                return;
+            }
+
+            const head = document.getElementById('table-head');
+            const body = document.getElementById('table-body');
+            head.innerHTML = "";
+            body.innerHTML = "";
+
+            if(data.length === 0) return;
+
+            const columnas = Object.keys(data[0]);
+            let headRow = "<tr>";
+            columnas.forEach(col => headRow += `<th>${col}</th>`);
+            headRow += "</tr>";
+            head.innerHTML = headRow;
+
+            data.forEach(item => {
+                let bodyRow = "<tr>";
+                columnas.forEach(col => bodyRow += `<td>${item[col]}</td>`);
+                bodyRow += "</tr>";
+                body.innerHTML += bodyRow;
+            });
+        }
+
+        function getPrimaryKey(table) {
+            if (table === 'clientes') return 'id_cliente';
+            if (table === 'pedidos') return 'id_pedido';
+            if (table === 'tecnicos') return 'id_tecnico';
+            return 'id_item';
+        }
+
+        function logout() {
+            document.getElementById('section-dashboard').classList.add('hidden');
+            document.getElementById('section-auth').classList.remove('hidden');
+            document.getElementById('form-login').reset();
+        }
+    </script>
+</body>
+</html>
