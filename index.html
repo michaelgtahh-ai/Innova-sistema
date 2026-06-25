@@ -90,16 +90,12 @@
     </div>
 
     <script>
-        // TU URL REAL YA CONFIGURADA:
         const SUPABASE_URL = "https://zrvzwnpnulvoucsjqwad.supabase.co";
         
-        // AQUÍ BORRA EL TEXTO Y PEGA TU CLAVE ANON LARGA (Deja las comillas ""):
         const SUPABASE_ANON_KEY = "sb_publishable_hjYabds2c26rawDBF-qFVA_rAz_EPla";
 
-        // Inicializar el cliente Supabase
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // FUNCION: Iniciar Sesión buscando en la tabla 'usuarios_sistema'
         async function loginUsuario(e) {
             e.preventDefault();
             const user = document.getElementById('login-user').value;
