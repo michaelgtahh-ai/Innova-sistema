@@ -76,6 +76,7 @@
                 <option value="pedidos">Pedidos / Solicitudes</option>
                 <option value="tecnicos">Técnicos Asignados</option>
                 <option value="inventario">Inventario de Equipos</option>
+                <option value="usuarios_sistema">Operadores del Sistema</option>
             </select>
         </div>
 
@@ -116,6 +117,7 @@
                 alert("¡Ingreso Exitoso! Bienvenido " + user);
                 document.getElementById('section-auth').classList.add('hidden');
                 document.getElementById('section-dashboard').classList.remove('hidden');
+                document.getElementById('table-select').value = 'clientes';
                 cargarDatosTabla('clientes');
             } else {
                 alert("Usuario o contraseña incorrectos.");
@@ -176,6 +178,7 @@
             if (table === 'clientes') return 'id_cliente';
             if (table === 'pedidos') return 'id_pedido';
             if (table === 'tecnicos') return 'id_tecnico';
+            if (table === 'usuarios_sistema') return 'id_usuario';
             return 'id_item';
         }
 
