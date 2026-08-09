@@ -59,7 +59,7 @@
             </form>
 
             <form id="form-registro" onsubmit="registrarUsuario(event)">
-                <h3>Crear Nuevo Usuario</h3>
+                <h3>Registrarse en el Sistema</h3>
                 <div class="form-group">
                     <label>Nuevo Usuario</label>
                     <input type="text" id="reg-user" required>
@@ -68,14 +68,8 @@
                     <label>Contraseña</label>
                     <input type="password" id="reg-pass" required>
                 </div>
-                <div class="form-group">
-                    <label>Rol del Usuario</label>
-                    <select id="reg-rol">
-                        <option value="Operador">Usuario Básico (Operador)</option>
-                        <option value="Administrador">Usuario Administrador</option>
-                    </select>
-                </div>
-                <button type="submit" style="background-color: #10b981;">Registrar Operador</button>
+                <!-- Nota de seguridad: El rol no se puede elegir, se asigna 'Operador' por defecto -->
+                <button type="submit" style="background-color: #10b981;">Crear Cuenta</button>
             </form>
         </div>
     </div>
@@ -89,11 +83,11 @@
         <div class="form-group" style="margin-top: 10px;">
             <label for="table-select">Seleccione la Tabla de la Base de Datos a Consultar:</label>
             <select id="table-select" onchange="cambiarTabla(this.value)">
-                <!-- Las opciones se generarán dinámicamente según el Rol en JavaScript -->
+                <!-- Opciones dinámicas según Rol -->
             </select>
         </div>
 
-        <!-- SECCIÓN ESTADÍSTICA (DASHBOARD) - Visible solo para Administradores -->
+        <!-- SECCIÓN ESTADÍSTICA (DASHBOARD) - Solo Administradores -->
         <div id="panel-estadistico" class="hidden" style="margin-top: 20px; border-top: 2px dashed #cbd5e1; padding-top: 20px;">
             <h3>📊 Cuadro Estadístico del Sistema (Dashboard)</h3>
             <div class="dashboard-charts">
@@ -122,12 +116,11 @@
         const SUPABASE_ANON_KEY = "sb_publishable_hjYabds2c26rawDBF-qFVA_rAz_EPla";
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Variables globales para los gráficos y control de datos
         let usuarioActual = null;
         let chartInstancePedidos = null;
         let chartInstanceInventario = null;
 
-        // LOGIN DE USUARIO (Revisando el Rol)
+        // LOGIN DE USUARIO
         async function loginUsuario(e) {
             e.preventDefault();
             const user = document.getElementById('login-user').value;
@@ -142,40 +135,38 @@
             if (error) {
                 alert("Error al conectar con la base de datos.");
             } else if (data.length > 0) {
-                usuarioActual = data[0]; // Guardamos el usuario con su rol
+                usuarioActual = data[0];
                 alert(`¡Ingreso Exitoso! Bienvenido ${user} (${usuarioActual.rol})`);
                 
-                // Transición de pantallas
                 document.getElementById('section-auth').classList.add('hidden');
                 document.getElementById('section-dashboard').classList.remove('hidden');
                 
-                // Configurar la interfaz según los Niveles de Acceso
                 configurarInterfazPorRol();
             } else {
                 alert("Usuario o contraseña incorrectos.");
             }
         }
 
-        // REGISTRO DE USUARIO (Permitiendo elegir Rol)
+        // REGISTRO DE USUARIO (Forzado a 'Operador' por seguridad)
         async function registrarUsuario(e) {
             e.preventDefault();
             const user = document.getElementById('reg-user').value;
             const pass = document.getElementById('reg-pass').value;
-            const rolSeleccionado = document.getElementById('reg-rol').value;
 
+            // Al registrarse desde la web, SIEMPRE se inserta con rol 'Operador'
             const { data, error } = await _supabase
                 .from('usuarios_sistema')
-                .insert([{ username: user, password_text: pass, rol: rolSeleccionado }]);
+                .insert([{ username: user, password_text: pass, rol: 'Operador' }]);
 
             if (error) {
                 alert("Error al registrar usuario: Puede que ya exista.");
             } else {
-                alert(`¡Usuario '${user}' creado como [${rolSeleccionado}] exitosamente! Ya puede iniciar sesión.`);
+                alert(`¡Usuario '${user}' registrado con éxito! Su cuenta tiene permisos básicos (Operador).`);
                 document.getElementById('form-registro').reset();
             }
         }
 
-        // CONFIGURAR INTERFAZ SEGÚN REQUERIMIENTOS DE ROLES
+        // CONFIGURAR INTERFAZ POR ROL
         function configurarInterfazPorRol() {
             const select = document.getElementById('table-select');
             const badge = document.getElementById('user-role-badge');
@@ -185,7 +176,6 @@
             select.innerHTML = "";
 
             if (usuarioActual.rol === 'Administrador') {
-                // Administrador tiene acceso TOTAL
                 select.innerHTML = `
                     <option value="clientes">Clientes (15 Registros)</option>
                     <option value="pedidos">Pedidos / Solicitudes</option>
@@ -194,15 +184,14 @@
                     <option value="usuarios_sistema">Operadores del Sistema</option>
                 `;
                 panelEstadistico.classList.remove('hidden');
-                cargarDashboardEstadistico(); // Carga los gráficos interactivos
+                cargarDashboardEstadistico();
                 cambiarTabla('clientes');
             } else {
-                // Usuario Básico (Operador) SOLO accede a Gestión de Pedidos y Asignación de Técnicos
                 select.innerHTML = `
                     <option value="pedidos">Pedidos / Solicitudes</option>
                     <option value="tecnicos">Técnicos Asignados</option>
                 `;
-                panelEstadistico.classList.add('hidden'); // Oculta el Dashboard Estadístico
+                panelEstadistico.classList.add('hidden');
                 cambiarTabla('pedidos');
             }
         }
@@ -214,7 +203,6 @@
 
         // CONTROLADOR DE TABLAS
         async function cargarDatosTabla(tableName) {
-            // Protección de seguridad extra en el Frontend por si intentan forzar valores
             if (usuarioActual.rol !== 'Administrador' && tableName !== 'pedidos' && tableName !== 'tecnicos') {
                 alert("Acceso denegado: No tienes permisos para ver esta tabla.");
                 cambiarTabla('pedidos');
@@ -256,23 +244,20 @@
 
         // GENERACIÓN DEL DASHBOARD CON CHART.JS
         async function cargarDashboardEstadistico() {
-            // Destruir instancias previas de gráficos para evitar errores de renderizado al re-loguear
             if(chartInstancePedidos) chartInstancePedidos.destroy();
             if(chartInstanceInventario) chartInstanceInventario.destroy();
 
-            // 1. Datos para el Gráfico de Pedidos
+            // 1. Gráfico de Pedidos
             const { data: pedidos } = await _supabase.from('pedidos').select('*');
             let estadosPedidos = { 'Pendiente': 0, 'En Proceso': 0, 'Completado': 0 };
             
             if (pedidos) {
                 pedidos.forEach(p => {
-                    // Mapea la columna de estado (ajusta las mayúsculas/minúsculas si difieren en tu DB)
                     if(estadosPedidos[p.estado] !== undefined) estadosPedidos[p.estado]++;
                     else if(p.estatus && estadosPedidos[p.estatus] !== undefined) estadosPedidos[p.estatus]++;
                 });
             }
 
-            // Si los 15 registros no tienen estados exactos mapeados, ponemos data por defecto proporcional a tus 15 filas
             const dataP = Object.values(estadosPedidos).reduce((a,b)=>a+b,0) > 0 ? Object.values(estadosPedidos) : [6, 5, 4];
 
             const ctxP = document.getElementById('chartPedidos').getContext('2d');
@@ -289,7 +274,7 @@
                 options: { responsive: true }
             });
 
-            // 2. Datos para el Gráfico de Inventario
+            // 2. Gráfico de Inventario
             const { data: inventario } = await _supabase.from('inventario').select('*');
             let estadosInv = { 'Disponible': 0, 'Asignado': 0, 'Mantenimiento': 0 };
 
